@@ -4,8 +4,8 @@ LIBS = -Wl,-rpath=/usr/local/cs/lib64 -lglut -lGL -lGLU
 STD = -std=c++17
 
 # On cs32.seas.ucla.edu or lnxsrv06 or lnxsrv07 or lnxsrv09, uncomment the following three lines
-#CC = g32
-#STD = 
+CC = g32
+STD = 
 
 OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 HEADERS = $(wildcard *.h)
