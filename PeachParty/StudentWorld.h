@@ -14,18 +14,26 @@ class StudentWorld : public GameWorld
 {
 public:
 	StudentWorld(std::string assetPath);
+	~StudentWorld() { delete b; }
 	virtual int init();
 	virtual int move();
 	virtual void cleanUp();
-	
 	Board* getBoard() const { return b; }
-	bool isBlocked(Player* player);
-	
+	bool isBlocked(Actor* p, int dir);
+	bool atFork(Actor* actor, int dir);
+	bool isForkBlocked(Actor* p, int dir);
+	Player* getPlayer(int i) const { return player[i - 1]; }
+	void depositBank(int coins) { m_bank += coins; }
+	void withdrawBank(int& coins) { 
+		coins = m_bank;
+		m_bank = 0;
+	}
 
 private:
 	std::vector<Actor*> actor;
 	std::vector<Player*> player;
 	Board* b;
+	int m_bank;
 };
 
 #endif // STUDENTWORLD_H_
