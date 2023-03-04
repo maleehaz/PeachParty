@@ -10,9 +10,7 @@ Actor::Actor(int startX, int startY, int imageId, int depth, StudentWorld* world
 	m_world = world;
 }
 
-Actor::~Actor() {
-	delete m_world;
-}
+
 
 
 
@@ -20,11 +18,34 @@ Actor::~Actor() {
 Player::Player(int startX, int startY, int imageId, StudentWorld* world, int p_num) :
 	Actor(startX, startY, imageId, 0, world),
 	m_player(p_num), m_stars(0), m_coins(0), die_roll(0), count(0), WaitingToRoll(true), m_path(right),
-	isAffected(false), switch_dir(false)
+	isAffected(false), switch_dir(false), m_vortex(NULL), attacked(false)
 {
-
+	vortex_notif = "";
+	m_msg = "P" + std::to_string(m_player) + " Roll: " +
+		std::to_string(getRoll()) +
+		" Stars: " +
+		std::to_string(getStars()) +
+		" $$: " + 
+		std::to_string(getCoins()) + vortex_notif;
 }
 
+void Player::updateVortexMsg() {
+	if (hasVortex())
+		vortex_notif = " VOR";
+	else {
+		vortex_notif = "";
+	}
+}
+
+void Player::updateText() {
+	m_msg = "P" + std::to_string(m_player) + " Roll: " +
+		std::to_string(getRoll()) +
+		" Stars: " +
+		std::to_string(getStars()) +
+		" $$: " +
+		std::to_string(getCoins()) +
+		vortex_notif;
+}
 
 
 void Player::doSomething() {
@@ -37,6 +58,9 @@ void Player::doSomething() {
 			die_roll = randInt(1,10);
 			setTicksToMove(die_roll * 8);
 			WaitingToRoll = false;
+			break;
+		case ACTION_FIRE:
+			shootVortex(m_vortex);
 			break;
 		default:
 			return;
@@ -55,6 +79,7 @@ void Player::doSomething() {
 				if (getPath() == down)
 					return;
 				setPath(up);
+				setDirection(right);
 			}
 			break;
 		case ACTION_DOWN:
@@ -62,6 +87,7 @@ void Player::doSomething() {
 				if (getPath() == up)
 					return;
 				setPath(down);
+				setDirection(right);
 			}
 			break;
 		case ACTION_LEFT:
@@ -95,6 +121,7 @@ void Player::doSomething() {
 			case up:
 				if (!getWorld()->isBlocked(this, up)) {
 					setPath(up);
+					setDirection(right);
 					moveAtAngle(up, 2);
 					decTick();
 					break;
@@ -119,6 +146,7 @@ void Player::doSomething() {
 			case down:
 				if (!getWorld()->isBlocked(this, down)) {
 					setPath(down);
+					setDirection(right);
 					moveAtAngle(down, 2);
 					decTick();
 					break;
@@ -151,12 +179,14 @@ void Player::doSomething() {
 				else {
 					if (!getWorld()->isBlocked(this, up)) {
 						setPath(up);
+						setDirection(right);
 						moveAtAngle(up, 2);
 						decTick();
 						break;
 					}
 					else {
 						setPath(down);
+						setDirection(right);
 						moveAtAngle(down, 2);
 						decTick();
 						break;
@@ -174,12 +204,14 @@ void Player::doSomething() {
 				else {
 					if (!getWorld()->isBlocked(this, up)) {
 						setPath(up);
+						setDirection(right);
 						moveAtAngle(up, 2);
 						decTick();
 						break;
 					}
 					else {
 						setPath(down);
+						setDirection(right);
 						moveAtAngle(down, 2);
 						decTick();
 						break;
@@ -203,7 +235,12 @@ void Player::doSomething() {
 
 }
 
-
+void Player::shootVortex(Vortex* vortex) {
+	if (hasVortex()) {
+		vortex->shoot(this);
+		setVortex(NULL);
+	}
+}
 
 
 //PEACH
@@ -217,7 +254,7 @@ Yoshi::Yoshi(int startX, int startY, StudentWorld* world) :
 
 //SQUARE -> pure virtual
 Square::Square(int startX, int startY, int imageId, StudentWorld* world) :
-	Actor(startX, startY, imageId, 1, world) {}
+	Actor(startX, startY, imageId, 1, world), must_be_killed(false) {}
 
 
 void Square::doSomething() {
@@ -231,7 +268,7 @@ void Square::doSomething() {
 	if (this->getX() == p1_x && this->getY() == p1_y) {
 		interactWithPlayer(getWorld()->getPlayer(1));
 	}
-	if (this->getX() == p2_x && this->getY() == p2_y) {
+	else if (this->getX() == p2_x && this->getY() == p2_y) {
 		interactWithPlayer(getWorld()->getPlayer(2));
 	}
 		
@@ -335,7 +372,7 @@ void BankSquare::doSomething() {
 	if (this->getX() == p1_x && this->getY() == p1_y) {
 		interactWithPlayer(getWorld()->getPlayer(1));
 	}
-	if (this->getX() == p2_x && this->getY() == p2_y) {
+	else if (this->getX() == p2_x && this->getY() == p2_y) {
 		interactWithPlayer(getWorld()->getPlayer(2));
 	}
 	else {
@@ -350,17 +387,421 @@ void BankSquare::doSomething() {
 //EVENT SQUARE
 EventSquare::EventSquare(int startX, int startY, StudentWorld* world) : Square(startX, startY, IID_EVENT_SQUARE, world) {}
 
+void EventSquare::interactWithPlayer(Player* player) {
+	int option = randInt(1, 3);
+	if (!player->getIsAffected()) {
+		switch (option) {
+		case 1:
+			option1(player); // teleport player to random square
+			break;
+		case 2:
+			option2(player); // swap positions with other player
+			break;
+		case 3:
+			option3(player); // give vortex projectile
+			break;
+		default:
+			break;
+		}
+		player->setIsAffected(true);
+	}
+}
+
+void EventSquare::option1(Player* p) { 
+	int newX, newY;
+	getWorld()->get_random_square(newX, newY);
+	p->moveTo(newX, newY);
+	getWorld()->playSound(SOUND_PLAYER_TELEPORT);
+	switch (getWorld()->getAction(p->getPlayerNum())) {
+	case ACTION_UP:
+		if (!getWorld()->isForkBlocked(this, up)) {
+			if (p->getPath() == down)
+				return;
+			setPath(up);
+		}
+		break;
+	case ACTION_DOWN:
+		if (!getWorld()->isForkBlocked(this, down)) {
+			if (p->getPath() == up)
+				return;
+			setPath(down);
+		}
+		break;
+	case ACTION_LEFT:
+		if (!getWorld()->isForkBlocked(this, left)) {
+			if (p->getPath() == right)
+				return;
+			setPath(left);
+		}
+		break;
+	case ACTION_RIGHT:
+		if (!getWorld()->isForkBlocked(this, right)) {
+			if (p->getPath() == left)
+				return;
+			setPath(right);
+		}
+		break;
+	default:
+		return;
+	}
+}
+void EventSquare::option2(Player* p) {
+	Player* other = getWorld()->get_other_player(p);
+	p->swapPositions(other);
+	getWorld()->playSound(SOUND_PLAYER_TELEPORT);
+}
+void EventSquare::option3(Player* p) { // complete after doing vortex class
+	getWorld()->givePlayerVortex(p->getPlayerNum());
+	getWorld()->playSound(SOUND_GIVE_VORTEX);
+}
+
+
 //DROPPING SQUARE
 DropSquare::DropSquare(int startX, int startY, StudentWorld* world) : CoinSquare(startX, startY, IID_DROPPING_SQUARE, world) {}
 
+void DropSquare::interactWithPlayer(Player* player) {
+	int option = randInt(1, 2);
+	if (!player->getIsAffected()) {
+		switch (option) {
+		case 1:
+			if (player->getCoins() < 10)
+				player->addCoins(-(player->getCoins()));
+			else {
+				player->addCoins(-10);
+			}
+			getWorld()->playSound(SOUND_DROPPING_SQUARE_ACTIVATE);
+			break;
+		case 2:
+			if (player->getStars() > 0) {
+				player->addStars(-1);
+			}
+			getWorld()->playSound(SOUND_DROPPING_SQUARE_ACTIVATE);
+			break;
+		default:
+			break;
+		}
+		player->setIsAffected(true);
+	}
+}
+
 //BADDIE
-Baddie::Baddie(int startX, int startY, int imageId, StudentWorld* world) : Actor(startX, startY, imageId, 0, world) {}
+Baddie::Baddie(int startX, int startY, int imageId, StudentWorld* world) : 
+	Actor(startX, startY, imageId, 0, world), m_path(right), m_count(0), switch_dir(false),
+	paused(true), pause_count(180) {}
+
+bool Baddie::isActive() {
+
+	if (getWorld()->getPlayer(1)->getRoll() != 0) {
+		getWorld()->getPlayer(1)->setAttackedByBaddie(false);
+	}
+	else if (getWorld()->getPlayer(2)->getRoll() != 0) {
+		getWorld()->getPlayer(2)->setAttackedByBaddie(false);
+	}
+
+	return true;
+}
+
+void Baddie::doSomething() {
+
+	if (isPaused()) {
+
+		if (pause_count == 0) {
+			setPause(false);
+			setTicksToMove(randInt(1, 10) * 8);
+			return;
+		}
+
+		if (getWorld()->getPlayer(1)->getX() == this->getX() &&
+			getWorld()->getPlayer(1)->getY() == this->getY() &&
+			getWorld()->getPlayer(1)->isWaitingToRoll()) {
+			interactWithPlayer(getWorld()->getPlayer(1));
+		}
+		if (getWorld()->getPlayer(2)->getX() == this->getX() &&
+			getWorld()->getPlayer(2)->getY() == this->getY() &&
+			getWorld()->getPlayer(2)->isWaitingToRoll()) {
+			interactWithPlayer(getWorld()->getPlayer(2));
+		}
+		dec_pause();
+		return;
+	}
+	else {
+		int aX = getX();
+		int aY = getY();
+		int x = 2;
+
+		if (getWorld()->atFork(this, getPath()) && !switchedDir()) {
+			switch (randInt(1, 4)) {
+			case 1: // UP
+				if (!getWorld()->isForkBlocked(this, up)) {
+					
+					setPath(up);
+					setDirection(right);
+				}
+				break;
+			case 2: // DOWN
+				if (!getWorld()->isForkBlocked(this, down)) {
+					
+					setPath(down);
+					setDirection(right);
+				}
+				break;
+			case 3: // LEFT
+				if (!getWorld()->isForkBlocked(this, left)) {
+					
+					setPath(left);
+					setDirection(left);
+				}
+				break;
+			case 4: // RIGHT
+				if (!getWorld()->isForkBlocked(this, right)) {
+					
+					setPath(right);
+					setDirection(right);
+				}
+				break;
+			default:
+				return;
+			}
+		}
+
+
+
+
+		switchDir(false);
+		if (getTicksToMove() != 0) {
+			m_count++;
+			switch (getPath()) {
+			case up:
+				if (!getWorld()->isBlocked(this, up)) {
+					setPath(up);
+					setDirection(right);
+					moveAtAngle(up, 2);
+					decTick();
+					break;
+				}
+				else {
+					if (!getWorld()->isBlocked(this, right)) {
+						setPath(right);
+						setDirection(right);
+						moveTo(aX + x, aY);
+						decTick();
+						break;
+					}
+					else {
+						setPath(left);
+						setDirection(left);
+						moveTo(aX - x, aY);
+						decTick();
+						break;
+					}
+				}
+				break;
+			case down:
+				if (!getWorld()->isBlocked(this, down)) {
+					setPath(down);
+					setDirection(right);
+					moveAtAngle(down, 2);
+					decTick();
+					break;
+				}
+				else {
+					if (!getWorld()->isBlocked(this, right)) {
+						setPath(right);
+						setDirection(right);
+						moveTo(aX + x, aY);
+						decTick();
+						break;
+					}
+					else {
+						setPath(left);
+						setDirection(left);
+						moveTo(aX - x, aY);
+						decTick();
+						break;
+					}
+				}
+				break;
+			case right:
+				if (!getWorld()->isBlocked(this, right)) {
+					setPath(right);
+					setDirection(right);
+					moveTo(aX + x, aY);
+					decTick();
+					break;
+				}
+				else {
+					if (!getWorld()->isBlocked(this, up)) {
+						setPath(up);
+						setDirection(right);
+						moveAtAngle(up, 2);
+						decTick();
+						break;
+					}
+					else {
+						setPath(down);
+						setDirection(right);
+						moveAtAngle(down, 2);
+						decTick();
+						break;
+					}
+				}
+				break;
+			case left:
+				if (!getWorld()->isBlocked(this, left)) {
+					setPath(left);
+					setDirection(left);
+					moveTo(aX - x, aY);
+					decTick();
+					break;
+				}
+				else {
+					if (!getWorld()->isBlocked(this, up)) {
+						setPath(up);
+						setDirection(right);
+						moveAtAngle(up, 2);
+						decTick();
+						break;
+					}
+					else {
+						setPath(down);
+						setDirection(right);
+						moveAtAngle(down, 2);
+						decTick();
+						break;
+					}
+				}
+				break;
+			default:
+				break;
+			}
+			if (m_count == 8) {
+				m_count = 0;
+			}
+			if (getTicksToMove() == 0) {
+				setPause(true);
+				reset_pause();
+				whenZeroTicks();
+				return;
+			}
+
+		}
+	}
+}
+
+
+
+
 
 //BOWSER
 Bowser::Bowser(int startX, int startY, StudentWorld* world) : Baddie(startX, startY, IID_BOWSER, world) {}
 
+void Bowser::whenZeroTicks() {
+	switch (randInt(1, 4)) {
+	case 1:
+		getWorld()->drop_square(this);
+		getWorld()->addDropSquare(getX(), getY());
+		getWorld()->playSound(SOUND_DROPPING_SQUARE_CREATED);
+		break;
+	case 2:
+	case 3:
+	case 4:
+		break;
+	default:
+		break;
+	}
+	return;
+}
+
+void Bowser::interactWithPlayer(Player* p) {
+	if (!p->getIsAffected()) {
+		switch (randInt(0, 1)) {
+		case 0:
+			p->addCoins(-(p->getCoins()));
+			getWorld()->playSound(SOUND_BOWSER_ACTIVATE);
+			break;
+		case 1:
+			break;
+		default:
+			break;
+		}
+		p->setIsAffected(true);
+	}
+}
+
 //BOO
 Boo::Boo(int startX, int startY, StudentWorld* world) : Baddie(startX, startY, IID_BOO, world) {}
 
+void Boo::interactWithPlayer(Player* p) {
+	if (!p->getIsAffected()) {
+		switch (randInt(0, 1)) {
+		case 0:
+			p->swapCoins(getWorld()->get_other_player(p));
+			break;
+		case 1:
+			p->swapStars(getWorld()->get_other_player(p));
+			break;
+		default:
+			break;
+		}
+		getWorld()->playSound(SOUND_BOO_ACTIVATE);
+		p->setIsAffected(true);
+	}
+}
+
 //VORTEX
-Vortex::Vortex(int startX, int startY, StudentWorld* world) : Actor(startX, startY, IID_VORTEX, 0, world) {}
+Vortex::Vortex(int startX, int startY, StudentWorld* world) : 
+	Square(startX, startY, IID_VORTEX, world), is_active(false), is_moving(false) {
+	setVisible(false);
+}
+
+
+
+void Vortex::shoot(Player* p) {
+	setVisible(true);
+	moveTo(p->getX(),p->getY());
+	setDirection(p->getPath());
+	is_active = true;
+	getWorld()->playSound(SOUND_PLAYER_FIRE);
+	return;
+}
+
+void Vortex::interactWithBaddie() {
+	Actor* target = getWorld()->actor_overlap_vortex(this);
+	int newX = 0; int newY = 0;
+	if (target == NULL)
+		return;
+	else {
+		getWorld()->get_random_square(newX, newY);
+		target->moveTo(newX, newY);
+		target->setDirection(right);
+		target->setPath(right);
+		setVisible(false);
+		setKill(true);
+		getWorld()->playSound(SOUND_HIT_BY_VORTEX);
+	}
+
+}
+
+void Vortex::doSomething() {
+
+	if (is_moving) {
+		if (getTicksToMove() > 0) {
+			interactWithBaddie();
+			moveAtAngle(getDirection(), 2);
+			decTick();
+			return;
+		}
+		is_moving = false;
+	}
+	else if (getTicksToMove() == 0) {
+		setTicksToMove(18 * 8);
+		is_moving = true;
+		return;
+	}
+	else {
+		is_active = false;
+		setKill(true);
+	}
+
+	return;
+}

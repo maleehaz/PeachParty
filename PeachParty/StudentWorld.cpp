@@ -129,11 +129,12 @@ int StudentWorld::move()
 {
     // This code is here merely to allow the game to build, run, and terminate after you hit ESC.
     // Notice that the return value GWSTATUS_NOT_IMPLEMENTED will cause our framework to end the game.
-    string display = "P1 Roll: " + to_string(player[0]->getRoll()) +" Stars: " + to_string(player[0]->getStars()) +
-        " $$: " + to_string(player[0]->getCoins()) + " | Time: " +
-        to_string(timeRemaining()) + " | Bank: " + to_string(m_bank) + " | P2 Roll: " + to_string(player[1]->getRoll()) +
-        " Stars: " + to_string(player[1]->getStars()) + " $$: " + to_string(player[1]->getCoins()) +
-        " 22 VOR";
+    string display = player[0]->getText() + 
+        " | Time: " +
+        to_string(timeRemaining()) + 
+        " | Bank: " + to_string(m_bank) + 
+        " | " + 
+        player[1]->getText();
                         
 
     setGameStatText(display); //edit later to keep track of scores
@@ -149,6 +150,19 @@ int StudentWorld::move()
             (*it)->doSomething();
     }
 
+    killActors();
+
+    player[0]->updateVortexMsg();
+    player[1]->updateVortexMsg();
+    player[0]->updateText();
+    player[1]->updateText();
+    display = player[0]->getText() +
+        " | Time: " +
+        to_string(timeRemaining()) +
+        " | Bank: " + to_string(m_bank) +
+        " | " +
+        player[1]->getText();
+
     setGameStatText(display);
 
 
@@ -158,16 +172,32 @@ int StudentWorld::move()
         int p2_stars = player[1]->getStars();
         int p1_coins = player[0]->getCoins();
         int p2_coins = player[1]->getCoins();
-        if ((p1_stars + p1_coins) > (p2_stars + p2_coins)) {
+        if (p1_stars > p2_stars) {
             setFinalScore(p1_stars, p1_coins);
             return GWSTATUS_PEACH_WON;
         }
-        else if ((p2_stars + p2_coins) > (p1_stars + p1_coins)) {
+        else if (p2_stars > p1_stars) {
+            setFinalScore(p2_stars, p2_coins);
+            return GWSTATUS_YOSHI_WON;
+        }
+        else if (p1_coins > p2_coins) {
+            setFinalScore(p1_stars, p1_coins);
+            return GWSTATUS_PEACH_WON;
+        }
+        else if (p2_coins > p1_coins) {
             setFinalScore(p2_stars, p2_coins);
             return GWSTATUS_YOSHI_WON;
         }
         else {
-            return GWSTATUS_NOT_IMPLEMENTED;
+            switch (randInt(0, 1)) {
+            case 0:
+                setFinalScore(p1_stars, p1_coins);
+                return GWSTATUS_PEACH_WON;
+
+            case 1:
+                setFinalScore(p2_stars, p2_coins);
+                return GWSTATUS_YOSHI_WON;
+            }
         }
     }
     
@@ -176,23 +206,14 @@ int StudentWorld::move()
 
 void StudentWorld::cleanUp()
 {
-    vector<Player*>::iterator p;
-    p = player.begin();
-    while (p != player.end()) {
-        delete(*p);
-        player.erase(p--);
-        p++;
+    for (vector<Player*>::iterator it = player.begin(); it != player.end(); it++) {
+        delete (*it);
     }
 
-    vector<Actor*>::iterator a;
-    a = actor.begin();
-    while (a != actor.end()) {
-        delete(*a);
-        actor.erase(a--);
-        a++;
+    for (vector<Actor*>::iterator it = actor.begin(); it != actor.end(); it++) {
+        delete (*it);
     }
-    delete b;
-
+    
 }
 
 
@@ -322,3 +343,72 @@ bool StudentWorld::isBlocked(Actor* p, int dir) {
 
 }
 
+void StudentWorld::get_random_square(int& x, int& y) {
+    int randSquare = randInt(0, actor.size());
+    while ((actor[randSquare]->getX() == this->getPlayer(1)->getX() &&
+        actor[randSquare]->getX() == this->getPlayer(1)->getX()) ||
+        (actor[randSquare]->getX() == this->getPlayer(2)->getX() &&
+            actor[randSquare]->getX() == this->getPlayer(2)->getX())) {
+        randSquare = randInt(0, actor.size());
+    }
+    x = actor[randSquare]->getX();
+    y = actor[randSquare]->getY();
+}
+
+void StudentWorld::givePlayerVortex(int num_player) {
+    Vortex* vortex = new Vortex(getPlayer(num_player)->getX(),
+        getPlayer(num_player)->getY(), this);
+    actor.push_back(vortex);
+    getPlayer(num_player)->setVortex(vortex);
+}
+
+Actor* StudentWorld::actor_overlap_vortex(Vortex* v) {
+    int x = v->getX();
+    int y = v->getY();
+    int cx = 0; int cy = 0;
+    Actor* target = NULL;
+    for (int i = 0; i < actor.size(); i++) {
+        cx = actor[i]->getX();
+        cy = actor[i]->getY();
+        if (x == cx && y == cy && actor[i]->isImpactedByVortex())
+            target = actor[i];
+    }
+    return target;
+
+}
+
+void StudentWorld::drop_square(Baddie* baddie) { // FIX DROP SQUARE FUNCTION
+    int x = baddie->getX();
+    int y = baddie->getY();
+    int cx = 0; int cy = 0;
+    for (int i = 0; i < actor.size(); i++) {
+        cx = actor[i]->getX();
+        cy = actor[i]->getY();
+        if (x == cx && y == cy && actor[i]->isSquare()) {
+            actor[i]->setKill(true);
+        }
+    }
+}
+
+void StudentWorld::addDropSquare(int x, int y) {
+    actor.push_back(new DropSquare(x, y, this));
+}
+
+void StudentWorld::killActors() {
+    vector<Actor*>::iterator it;
+    it = actor.begin();
+    while (it != actor.end()) {
+        if ((*it)->Kill()) {
+            if (it == actor.begin()) {
+                vector<Actor*>::iterator temp = it;
+                it++;
+                delete(*temp);
+                actor.erase(temp);
+            }
+            delete(*it);
+            actor.erase(it--);
+        }
+        it++;
+    }
+    return;
+}

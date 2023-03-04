@@ -28,6 +28,22 @@ public:
 		coins = m_bank;
 		m_bank = 0;
 	}
+	void givePlayerVortex(int num_player);
+	Actor* actor_overlap_vortex(Vortex* v);
+	void get_random_square(int& x, int& y);
+	void drop_square(Baddie* baddie);
+	void killActors();
+	void addDropSquare(int x, int y);
+
+	// Given a player object pointer, returns a pointer to the other player object. Used for swapping
+	// actions.
+	Player* get_other_player(Player* p) const {
+		int p_num = p->getPlayerNum();
+		if (p_num == 1) {
+			return getPlayer(2);
+		}
+		return getPlayer(1);
+	}
 
 private:
 	std::vector<Actor*> actor;
