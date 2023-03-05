@@ -5,14 +5,10 @@
 using namespace std;
 
 
-
-
 GameWorld* createStudentWorld(string assetPath)
 {
 	return new StudentWorld(assetPath);
 }
-
-// Students:  Add code to this file, StudentWorld.h, Actor.h, and Actor.cpp
 
 StudentWorld::StudentWorld(string assetPath)
 : GameWorld(assetPath), b(new Board()), m_bank(0)
@@ -22,7 +18,7 @@ StudentWorld::StudentWorld(string assetPath)
 int StudentWorld::init()
 {
 
-	startCountdownTimer(99);  // this placeholder causes timeout after 5 seconds
+	startCountdownTimer(99);  // START GAME TIMER, ENDS IN 99 SECONDS
     
     // LOAD CORRECT BOARD
     int BOARDNUM = this->getBoardNumber();
@@ -127,8 +123,7 @@ int StudentWorld::init()
 
 int StudentWorld::move()
 {
-    // This code is here merely to allow the game to build, run, and terminate after you hit ESC.
-    // Notice that the return value GWSTATUS_NOT_IMPLEMENTED will cause our framework to end the game.
+   // SET GAME TEXT TO DISPLAY STATS AT THE TOP
     string display = player[0]->getText() + 
         " | Time: " +
         to_string(timeRemaining()) + 
@@ -136,8 +131,8 @@ int StudentWorld::move()
         " | " + 
         player[1]->getText();
                         
-
-    setGameStatText(display); //edit later to keep track of scores
+    // SET DISPLAY
+    setGameStatText(display); 
     
     
 
@@ -152,6 +147,7 @@ int StudentWorld::move()
 
     killActors();
 
+    //UPDATE DISPLAY TEXT FOR EACH PLAYER
     player[0]->updateVortexMsg();
     player[1]->updateVortexMsg();
     player[0]->updateText();
@@ -163,9 +159,11 @@ int StudentWorld::move()
         " | " +
         player[1]->getText();
 
+    //UPDATE DISPLAY TEXT TO SHOW RECENT CHANGES
     setGameStatText(display);
 
 
+    // DECIDE WINNER AND DISPLAY WHO WON
     if (timeRemaining() <= 0) {
         playSound(SOUND_GAME_FINISHED);
         int p1_stars = player[0]->getStars();
@@ -216,7 +214,7 @@ void StudentWorld::cleanUp()
     
 }
 
-
+// Checks paths that are blocked at a fork
 bool StudentWorld::isForkBlocked(Actor* p, int dir) {
     int ax = p->getX();
     int ay = p->getY();
@@ -264,6 +262,7 @@ bool StudentWorld::isForkBlocked(Actor* p, int dir) {
 
 }
 
+// Checks whether an actor is at a fork
 bool StudentWorld::atFork(Actor* p, int dir) { 
 
     switch (dir) {
@@ -295,6 +294,7 @@ bool StudentWorld::atFork(Actor* p, int dir) {
     return false;
 }
 
+//Checks if actor's path is blocked in a certain direction
 bool StudentWorld::isBlocked(Actor* p, int dir) {
     int ax = p->getX();
     int ay = p->getY();
@@ -343,6 +343,7 @@ bool StudentWorld::isBlocked(Actor* p, int dir) {
 
 }
 
+// Get coordinates of a random square on the board
 void StudentWorld::get_random_square(int& x, int& y) {
     int randSquare = randInt(0, actor.size());
     while ((actor[randSquare]->getX() == this->getPlayer(1)->getX() &&
@@ -355,6 +356,8 @@ void StudentWorld::get_random_square(int& x, int& y) {
     y = actor[randSquare]->getY();
 }
 
+// Give a player a vortex and initialize new vortex object and
+// and add to vector of actors
 void StudentWorld::givePlayerVortex(int num_player) {
     Vortex* vortex = new Vortex(getPlayer(num_player)->getX(),
         getPlayer(num_player)->getY(), this);
@@ -362,6 +365,7 @@ void StudentWorld::givePlayerVortex(int num_player) {
     getPlayer(num_player)->setVortex(vortex);
 }
 
+// Check if vortec has hit an actor that is impacted by a vortex
 Actor* StudentWorld::actor_overlap_vortex(Vortex* v) {
     int x = v->getX();
     int y = v->getY();
@@ -377,7 +381,8 @@ Actor* StudentWorld::actor_overlap_vortex(Vortex* v) {
 
 }
 
-void StudentWorld::drop_square(Baddie* baddie) { // FIX DROP SQUARE FUNCTION
+// Replace square on board with Dropping Square
+void StudentWorld::drop_square(Baddie* baddie) { 
     int x = baddie->getX();
     int y = baddie->getY();
     int cx = 0; int cy = 0;
@@ -390,10 +395,13 @@ void StudentWorld::drop_square(Baddie* baddie) { // FIX DROP SQUARE FUNCTION
     }
 }
 
+// Add a new Dropping Square to the board
 void StudentWorld::addDropSquare(int x, int y) {
     actor.push_back(new DropSquare(x, y, this));
 }
 
+// Kill actors that are "killable"
+// This includes squares that are replaced with Dropping Squares and vortexes
 void StudentWorld::killActors() {
     vector<Actor*>::iterator it;
     it = actor.begin();

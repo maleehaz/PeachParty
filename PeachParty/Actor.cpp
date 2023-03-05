@@ -1,20 +1,14 @@
 #include "Actor.h"
 #include "StudentWorld.h"
 
-// Students:  Add code to this file, Actor.h, StudentWorld.h, and StudentWorld.cpp
-
-//ACTOR -> pure virtual
+//ACTOR 
 Actor::Actor(int startX, int startY, int imageId, int depth, StudentWorld* world) :
 	GraphObject(imageId, startX, startY, right, depth), ticks_to_move(0)
 {
 	m_world = world;
 }
 
-
-
-
-
-//PLAYER AVATAR -> pure virtual
+//PLAYER AVATAR 
 Player::Player(int startX, int startY, int imageId, StudentWorld* world, int p_num) :
 	Actor(startX, startY, imageId, 0, world),
 	m_player(p_num), m_stars(0), m_coins(0), die_roll(0), count(0), WaitingToRoll(true), m_path(right),
@@ -252,7 +246,7 @@ Yoshi::Yoshi(int startX, int startY, StudentWorld* world) :
 	Player(startX, startY, IID_YOSHI, world, 2) {}
 
 
-//SQUARE -> pure virtual
+//SQUARE 
 Square::Square(int startX, int startY, int imageId, StudentWorld* world) :
 	Actor(startX, startY, imageId, 1, world), must_be_killed(false) {}
 
@@ -287,7 +281,7 @@ bool Square::isActive() {
 	return true;
 }
 
-//COIN SQUARE -> pure virtual
+//COIN SQUARE 
 CoinSquare::CoinSquare(int startX, int startY, int imageId, StudentWorld* world) : Square(startX, startY, imageId, world) {}
 
 //BLUE COIN SQUARE
@@ -693,9 +687,6 @@ void Baddie::doSomething() {
 		}
 	}
 }
-
-
-
 
 
 //BOWSER
