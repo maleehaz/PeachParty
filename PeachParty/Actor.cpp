@@ -265,10 +265,12 @@ void Square::doSomething() {
 	int p2_x = getWorld()->getPlayer(2)->getX();
 	int p2_y = getWorld()->getPlayer(2)->getY();
 
-	if (this->getX() == p1_x && this->getY() == p1_y) {
+	if (this->getX() == p1_x && this->getY() == p1_y
+		&& getWorld()->getPlayer(1)->getRoll() == 0) {
 		interactWithPlayer(getWorld()->getPlayer(1));
 	}
-	else if (this->getX() == p2_x && this->getY() == p2_y) {
+	if (this->getX() == p2_x && this->getY() == p2_y
+		&& getWorld()->getPlayer(2)->getRoll() == 0) {
 		interactWithPlayer(getWorld()->getPlayer(2));
 	}
 		
@@ -276,15 +278,12 @@ void Square::doSomething() {
 }
 
 bool Square::isActive() {
-	if (getWorld()->getPlayer(1)->getRoll() != 0) {
+	if ( getWorld()->getPlayer(1)->getRoll() != 0 ) {
 		getWorld()->getPlayer(1)->setIsAffected(false);
-		return false;
 	}
-	else if (getWorld()->getPlayer(2)->getRoll() != 0) {
+	if ( getWorld()->getPlayer(2)->getRoll() != 0 ) {
 		getWorld()->getPlayer(2)->setIsAffected(false);
-		return false;
 	}
-	
 	return true;
 }
 
@@ -299,8 +298,7 @@ void BlueCoinSquare::interactWithPlayer(Player* player) {
 		player->addCoins(3);
 		getWorld()->playSound(SOUND_GIVE_COIN);
 		player->setIsAffected(true);
-	}
-	
+	}	
 }
 
 
@@ -355,10 +353,16 @@ void BankSquare::interactWithPlayer(Player* player) {
 		withdrawn = true;
 		return;
 	}
-	else if (player->getRoll() != 0 && player->getCoins() >= 5) {
+	else if (player->getRoll() != 0) {
 		getWorld()->playSound(SOUND_DEPOSIT_BANK);
-		player->addCoins(-5);
-		getWorld()->depositBank(5);
+		if (player->getCoins() >= 5) {
+			player->addCoins(-5);
+			getWorld()->depositBank(5);
+		}
+		else {
+			getWorld()->depositBank(player->getCoins());
+			player->addCoins(-player->getCoins());
+		}
 	}
 }
 
@@ -569,9 +573,11 @@ void Baddie::doSomething() {
 
 		switchDir(false);
 		if (getTicksToMove() != 0) {
+
 			m_count++;
+
 			switch (getPath()) {
-			case up:
+			case up: // UP
 				if (!getWorld()->isBlocked(this, up)) {
 					setPath(up);
 					setDirection(right);
@@ -596,7 +602,7 @@ void Baddie::doSomething() {
 					}
 				}
 				break;
-			case down:
+			case down: // DOWN
 				if (!getWorld()->isBlocked(this, down)) {
 					setPath(down);
 					setDirection(right);
@@ -621,7 +627,7 @@ void Baddie::doSomething() {
 					}
 				}
 				break;
-			case right:
+			case right: // RIGHT
 				if (!getWorld()->isBlocked(this, right)) {
 					setPath(right);
 					setDirection(right);
@@ -646,7 +652,7 @@ void Baddie::doSomething() {
 					}
 				}
 				break;
-			case left:
+			case left: // LEFT
 				if (!getWorld()->isBlocked(this, left)) {
 					setPath(left);
 					setDirection(left);
@@ -750,7 +756,8 @@ void Boo::interactWithPlayer(Player* p) {
 
 //VORTEX
 Vortex::Vortex(int startX, int startY, StudentWorld* world) : 
-	Square(startX, startY, IID_VORTEX, world), is_active(false), is_moving(false) {
+	Actor(startX, startY, IID_VORTEX, 0, world)
+	,must_be_killed(false), is_active(false), is_moving(false) {
 	setVisible(false);
 }
 

@@ -265,7 +265,7 @@ public:
 };
 
 //VORTEX
-class Vortex : public Square
+class Vortex : public Actor
 {
 public:
 	Vortex(int startX, int startY, StudentWorld* world);
@@ -274,8 +274,11 @@ public:
 	virtual void doSomething();
 	virtual void interactWithBaddie();
 	virtual bool isSquare() { return false; }
+	virtual bool Kill() { return must_be_killed; }
+	virtual void setKill(bool k) { must_be_killed = k; }
 
 private:
+	bool must_be_killed;
 	bool is_active;
 	bool is_moving;
 };
